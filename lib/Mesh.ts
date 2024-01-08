@@ -20,6 +20,7 @@ interface MeshOptions {
     port: number;
     host: string;
     nodeId?: number;
+    logLevels?: LogLevel[];
 }
 
 export default class Mesh {
@@ -41,7 +42,7 @@ export default class Mesh {
     private nodeSyncScheduler: NodeJS.Timeout | undefined;
 
     constructor(opts: MeshOptions) {
-        this.logger = opts?.logger ?? new Logger(LogLevel.DEBUG);
+        this.logger = opts?.logger ?? new Logger(opts.logLevels);
         this.port = opts.port;
         this.host = opts.host;
 
@@ -56,6 +57,7 @@ export default class Mesh {
             output += temp;
         }
 
+        // static method so we don't have a logger instance available
         console.log(`Generated new nodeId: ${output}`);
 
         return parseInt(output);
@@ -100,7 +102,6 @@ export default class Mesh {
     }
 
     private processMsg(msg: string) {
-        console.log(msg);
         const t1 = getMicroSeconds();
 
         let jsonData;

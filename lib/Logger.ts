@@ -14,19 +14,19 @@ export enum LogLevel {
 }
 
 export class Logger {
-    level: LogLevel;
+    levels: LogLevel[];
 
-    constructor(level: LogLevel = LogLevel.ERROR) {
-        this.level = level;
+    constructor(level: LogLevel[] = [LogLevel.ERROR]) {
+        this.levels = level;
     }
 
-    setLogLevel(level: LogLevel) {
-        console.log(`setLogLevel: ${LogLevel[level]}`);
-        this.level = level;
+    setLogLevel(levels: LogLevel[]) {
+        console.log(`Log levels set`);
+        this.levels = levels;
     }
 
     log(level: LogLevel, msg: any) {
-        if (level <= this.level) {
+        if (this.levels.includes(level)) {
             console.log(`[${LogLevel[level]}]:`, msg);
         }
     }
