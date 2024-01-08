@@ -1,8 +1,9 @@
 {
     "name": "painlessmesh.ts",
     "module": "./dist/Mesh.js",
+    "types": "dist/types",
     "type": "module",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "A typescript implementation of the esp32 lib - painlessMesh",
     "keywords": [
         "esp32",
@@ -19,7 +20,6 @@
     "repository": {
         "url": "https://github.com/Squishy47/painlessMesh.ts"
     },
-    "types": "dist/Mesh.d.ts",
     "devDependencies": {
         "@types/bun": "latest",
         "@types/node": "^20.8.6"
