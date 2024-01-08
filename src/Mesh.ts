@@ -22,7 +22,7 @@ interface MeshOptions {
     nodeId?: number;
 }
 
-export class Mesh {
+export default class Mesh {
     private nodeId: number;
     private port: number;
     private host: string;
