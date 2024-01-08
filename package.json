@@ -1,6 +1,6 @@
 {
     "name": "painless-mesh.ts",
-    "module": "index.ts",
+    "module": "./src/Mesh.ts",
     "type": "module",
     "devDependencies": {
         "@types/bun": "latest"
