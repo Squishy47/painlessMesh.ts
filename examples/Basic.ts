@@ -1,4 +1,3 @@
-import { LogLevel } from "../lib/Logger.ts";
 import Mesh from "../lib/Mesh.ts";
 
 const mesh = new Mesh({
