@@ -1,7 +1,24 @@
 {
-    "name": "painless-mesh.ts",
+    "name": "painlessmesh.ts",
     "module": "./src/Mesh.ts",
     "type": "module",
+    "version": "1.0.0",
+    "description": "A typescript implementation of the esp32 lib - painlessMesh",
+    "keywords": [
+        "esp32",
+        "painlessMesh",
+        "arduino",
+        "esp8266",
+        "mesh",
+        "networking"
+    ],
+    "author": {
+        "name": "Squishy"
+    },
+    "license": "MIT",
+    "repository": {
+        "url": "https://github.com/Squishy47/painlessMesh.ts"
+    },
     "devDependencies": {
         "@types/bun": "latest"
     },
