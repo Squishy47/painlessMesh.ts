@@ -1,9 +1,9 @@
 {
     "name": "painlessmesh.ts",
-    "module": "./dist/Mesh.js",
-    "types": "dist/types",
+    "module": "./dist/Mesh",
+    "types": "dist/types/Mesh",
     "type": "module",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "A typescript implementation of the esp32 lib - painlessMesh",
     "keywords": [
         "esp32",
@@ -26,5 +26,8 @@
     },
     "peerDependencies": {
         "typescript": "^5.0.0"
-    }
+    },
+    "files": [
+        "dist"
+    ]
 }
