@@ -1,4 +1,5 @@
-import net from "net";
+import * as net from "net";
+
 import { Time } from "./Time";
 import { LogLevel, Logger } from "./Logger";
 import {
@@ -65,7 +66,8 @@ export default class Mesh {
     }
 
     private generateNewNodeId(): number {
-        return CRC32.str(machineIdSync(true));
+        const newId = CRC32.str(machineIdSync(true));
+        return newId < 0 ? newId * -1 : newId;
     }
 
     private setConnected(state: boolean) {
@@ -307,9 +309,11 @@ export default class Mesh {
                 this.broadcastCallbacks.push(cb);
                 break;
             case "connected":
+                // @ts-ignore
                 this.connectedCallbacks.push(cb);
                 break;
             case "disconnected":
+                // @ts-ignore
                 this.disconnectedCallbacks.push(cb);
                 break;
             default:
