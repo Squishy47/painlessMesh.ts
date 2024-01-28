@@ -20,6 +20,7 @@ export type Msg = {
     dest: number;
     from: number;
     msg: string;
+    timeReceived: number;
 };
 
 export type BroadcastMsg = Msg & {
@@ -76,5 +77,8 @@ export type NodeSyncReplyMsg = NodeSyncMsg & {
     type: MeshMsgType.NODE_SYNC_REPLY;
 };
 
-export type onMsgCallbackType = "broadcast" | "single";
-
+export type onMsgCallbackType =
+    | "broadcast"
+    | "single"
+    | "connected"
+    | "disconnected";

@@ -1,33 +1,36 @@
 {
-    "name": "painlessmesh.ts",
-    "module": "./dist/Mesh",
-    "types": "dist/types",
-    "type": "module",
-    "version": "1.0.5",
-    "description": "A typescript implementation of the esp32 lib - painlessMesh",
-    "keywords": [
-        "esp32",
-        "painlessMesh",
-        "arduino",
-        "esp8266",
-        "mesh",
-        "networking"
-    ],
-    "author": {
-        "name": "Squishy"
-    },
-    "license": "MIT",
-    "repository": {
-        "url": "https://github.com/Squishy47/painlessMesh.ts"
-    },
-    "devDependencies": {
-        "@types/bun": "latest",
-        "@types/node": "^20.8.6"
-    },
-    "peerDependencies": {
-        "typescript": "^5.0.0"
-    },
-    "files": [
-        "dist"
-    ]
+  "name": "painlessmesh.ts",
+  "module": "./dist/Mesh.js",
+  "types": "dist/types",
+  "type": "module",
+  "version": "1.0.3",
+  "description": "A typescript implementation of the esp32 lib - painlessMesh",
+  "keywords": [
+    "esp32",
+    "painlessMesh",
+    "arduino",
+    "esp8266",
+    "mesh",
+    "networking"
+  ],
+  "author": {
+    "name": "Squishy"
+  },
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/Squishy47/painlessMesh.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.11.8"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/default-gateway": "^7.2.2",
+    "crc-32": "^1.2.2",
+    "default-gateway": "^7.2.2",
+    "node-machine-id": "^1.1.12"
+  }
 }

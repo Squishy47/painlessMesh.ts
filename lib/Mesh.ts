@@ -1,5 +1,5 @@
 import net from "net";
-import { getMicroSeconds } from "./Time";
+import { Time } from "./Time";
 import { LogLevel, Logger } from "./Logger";
 import {
     MeshMsgType,
@@ -14,11 +14,14 @@ import {
     type NodeSyncItem,
     type Msg,
 } from "./Types";
+import { gateway4sync } from "default-gateway";
+import { machineIdSync } from "node-machine-id";
+import * as CRC32 from "crc-32";
 
 interface MeshOptions {
     logger?: Logger;
-    port: number;
-    host: string;
+    port?: number;
+    host?: string;
     nodeId?: number;
     logLevels?: LogLevel[];
 }
@@ -27,87 +30,66 @@ export default class Mesh {
     private nodeId: number;
     private port: number;
     private host: string;
+    private connected = false;
 
     private tcpClient = new net.Socket();
-
     private logger: Logger;
-
     private singleCallbacks: Array<(data: SingleMsg) => void> = [];
     private broadcastCallbacks: Array<(data: BroadcastMsg) => void> = [];
 
+    private connectedCallbacks: Array<() => void> = [];
+    private disconnectedCallbacks: Array<() => void> = [];
+
     private subs: Map<number, { root: boolean; subs: NodeSyncItem[] }> =
         new Map();
-
     private timeSyncScheduler: NodeJS.Timeout | undefined;
     private nodeSyncScheduler: NodeJS.Timeout | undefined;
 
+    private time = new Time();
+
     constructor(opts: MeshOptions) {
+        const { gateway } = gateway4sync();
+
         this.logger = opts?.logger ?? new Logger(opts.logLevels);
-        this.port = opts.port;
-        this.host = opts.host;
 
-        this.nodeId = opts?.nodeId ?? Mesh.generateNewNodeId();
-    }
-
-    static generateNewNodeId(): number {
-        let output = "";
-        while (output.length < 10) {
-            const temp = Math.floor(Math.random() * 10);
-            if (temp === 0) continue;
-            output += temp;
+        if (!opts.host) {
+            this.logger.log(LogLevel.STARTUP, `Gateway: ${gateway}`);
         }
 
-        // static method so we don't have a logger instance available
-        console.log(`Generated new nodeId: ${output}`);
+        this.port = opts.port ?? 5555;
+        this.host = opts.host ?? gateway;
 
-        return parseInt(output);
+        this.nodeId = opts?.nodeId ?? this.generateNewNodeId();
+
+        this.logger.log(LogLevel.STARTUP, `Node ID: ${this.nodeId}`);
     }
 
-    public async start(): Promise<boolean> {
-        return new Promise<boolean>((resolve, reject) => {
-            this.tcpClient.connect(
-                {
-                    port: this.port,
-                    host: this.host,
-                    noDelay: true,
-                },
-                () => {
-                    this.logger.log(LogLevel.STARTUP, "Mesh Connected");
-                    this.initiateNodeSync();
-                    this.initiateTimeSync();
+    private generateNewNodeId(): number {
+        return CRC32.str(machineIdSync(true));
+    }
 
-                    resolve(true);
-                }
-            );
+    private setConnected(state: boolean) {
+        this.connected = state;
 
-            this.tcpClient.on("data", (data: Buffer) => {
-                const stringDataWithoutEnding = data.toString().split("\u0000");
+        this.logger.log(
+            LogLevel.STARTUP,
+            `Mesh ${state ? "" : "dis"}connected.`
+        );
 
-                stringDataWithoutEnding.forEach((msg) => {
-                    if (!msg) return;
-
-                    this.processMsg(msg.replaceAll("\0", ""));
-                });
-            });
-
-            this.tcpClient.on("close", () => {
-                this.logger.log(LogLevel.STARTUP, "Mesh Connection closed.");
-            });
-
-            this.tcpClient.on("error", (err) => {
-                this.logger.log(LogLevel.ERROR, err);
-                reject(false);
-            });
-        });
+        if (state) {
+            this.connectedCallbacks.forEach((cb) => cb());
+        } else {
+            this.disconnectedCallbacks.forEach((cb) => cb());
+        }
     }
 
     private processMsg(msg: string) {
-        const t1 = getMicroSeconds();
+        const t1 = this.time.getMicroSeconds();
 
         let jsonData;
 
         try {
-            jsonData = JSON.parse(msg);
+            jsonData = { ...JSON.parse(msg), timeReceived: t1 };
         } catch (e) {
             this.logger.log(LogLevel.GENERAL, e);
             this.logger.log(LogLevel.GENERAL, msg);
@@ -156,7 +138,7 @@ export default class Mesh {
                   from: this.nodeId,
                   msg: {
                       type: TimeType.TIME_SYNC_REQUEST,
-                      t0: getMicroSeconds(),
+                      t0: this.time.getMicroSeconds(),
                   },
               }
             : {
@@ -167,9 +149,20 @@ export default class Mesh {
                       type: TimeType.TIME_REPLY,
                       t0: data.msg.t0 ?? 0,
                       t1,
-                      t2: getMicroSeconds(),
+                      t2: this.time.getMicroSeconds(),
                   },
               };
+    }
+
+    private calculateOffset(data: TimeSyncReplyMsg, t3: number) {
+        const t0 = data.msg.t0;
+        const t1 = data.msg.t1;
+        const t2 = data.msg.t2;
+
+        const p1 = (t1 - t0) / 2;
+        const p2 = (t2 - t3) / 2;
+
+        this.time.setOffset(p1 + p2);
     }
 
     private initiateTimeSync() {
@@ -222,6 +215,10 @@ export default class Mesh {
     private processNodeSyncReply(data: NodeSyncReplyMsg) {
         this.logger.log(LogLevel.GENERAL, "Processing node sync reply.");
 
+        if (!this.connected) {
+            this.setConnected(true);
+        }
+
         this.subs.set(data.nodeId, {
             root: data.root ?? false,
             subs: data.subs,
@@ -263,19 +260,72 @@ export default class Mesh {
         this.broadcastCallbacks.forEach((cb) => cb(data));
     }
 
-    on(msgType: onMsgCallbackType, cb: (data: Msg) => void): void {
-        if (msgType === "single") {
-            this.singleCallbacks.push(cb);
-        } else {
-            this.broadcastCallbacks.push(cb);
+    public start() {
+        this.tcpClient.connect(
+            {
+                port: this.port,
+                host: this.host,
+                noDelay: true,
+            },
+            () => {
+                this.logger.log(
+                    LogLevel.STARTUP,
+                    "tcp connection established."
+                );
+                this.initiateNodeSync();
+                this.initiateTimeSync();
+            }
+        );
+
+        this.tcpClient.on("data", (data: Buffer) => {
+            const stringDataWithoutEnding = data.toString().split("\u0000");
+
+            stringDataWithoutEnding.forEach((msg) => {
+                if (!msg) return;
+
+                this.processMsg(msg.replaceAll("\0", ""));
+            });
+        });
+
+        this.tcpClient.on("close", () => {
+            this.logger.log(LogLevel.STARTUP, "Mesh Connection closed.");
+            this.setConnected(false);
+        });
+
+        this.tcpClient.on("error", (err: Error) => {
+            this.logger.log(LogLevel.ERROR, err);
+            this.setConnected(false);
+        });
+    }
+
+    public on(msgType: onMsgCallbackType, cb: (data: Msg) => void): void {
+        switch (msgType) {
+            case "single":
+                this.singleCallbacks.push(cb);
+                break;
+            case "broadcast":
+                this.broadcastCallbacks.push(cb);
+                break;
+            case "connected":
+                this.connectedCallbacks.push(cb);
+                break;
+            case "disconnected":
+                this.disconnectedCallbacks.push(cb);
+                break;
+            default:
+                throw new Error("Unknown msg type");
         }
     }
 
-    send(type: onMsgCallbackType, msg: string, dest: number): void {
+    public send(type: onMsgCallbackType, msg: string, dest: number): void {
         if (type === "single" && dest === 0) {
             throw new Error(
                 "Cannot send a single message to everyone (dest = 0)"
             );
+        }
+
+        if (type === "broadcast") {
+            dest = 0;
         }
 
         const res = {
